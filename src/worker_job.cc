@@ -138,18 +138,17 @@ namespace detail {
 		if(status == cl::sycl::info::event_command_status::complete) {
 #endif
 			if(queue.is_profiling_enabled()) {
-				const auto queued = std::chrono::nanoseconds(0);
-				const auto submit = std::chrono::nanoseconds(0);
+#if !WORKAROUND(HIPSYCL, 0)
+				const auto submit = std::chrono::nanoseconds(event.get_profiling_info<cl::sycl::info::event_profiling::command_submit>());
+#endif
 				const auto start = std::chrono::nanoseconds(event.get_profiling_info<cl::sycl::info::event_profiling::command_start>());
 				const auto end = std::chrono::nanoseconds(event.get_profiling_info<cl::sycl::info::event_profiling::command_end>());
 
-				// FIXME: The timestamps logged here don't match the actual values we just queried. Can we fix that?
-				logger->trace(logger_map({{"event",
-				    fmt::format("Delta time queued -> submit : {}us", std::chrono::duration_cast<std::chrono::microseconds>(submit - queued).count())}}));
-				logger->trace(logger_map({{"event",
-				    fmt::format("Delta time submit -> start: {}us", std::chrono::duration_cast<std::chrono::microseconds>(start - submit).count())}}));
-				logger->trace(logger_map(
-				    {{"event", fmt::format("Delta time start -> end: {}us", std::chrono::duration_cast<std::chrono::microseconds>(end - start).count())}}));
+				logger->trace(logger_map({{"event", "compute job profile"},
+#if !WORKAROUND(HIPSYCL, 0)
+							{"submit to start delay", std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(start - submit).count())},
+#endif
+							{"start to end delay", std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count())}}));
 			}
 			return true;
 		}

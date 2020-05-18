@@ -138,10 +138,10 @@ namespace detail {
 			}
 		}
 
-		// ------------------------------- CELERITY_PROFILE_OCL -------------------------------
+		// ------------------------------- CELERITY_PROFILE_KERNEL ----------------------------
 
 		{
-			const auto result = get_env("CELERITY_PROFILE_OCL");
+			const auto result = get_env("CELERITY_PROFILE_KERNEL");
 			if(result.first) {
 				enable_device_profiling = result.second == "1";
 			}
