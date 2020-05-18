@@ -144,12 +144,6 @@ namespace detail {
 			const auto result = get_env("CELERITY_PROFILE_OCL");
 			if(result.first) {
 				enable_device_profiling = result.second == "1";
-#if WORKAROUND(HIPSYCL, 0)
-				if(*enable_device_profiling) {
-					logger.warn("Device profiling is currently not supported on hipSYCL");
-					enable_device_profiling = false;
-				}
-#endif
 			}
 		}
 

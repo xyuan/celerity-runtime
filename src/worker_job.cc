@@ -95,17 +95,6 @@ namespace detail {
 
 	std::pair<command_type, std::string> compute_job::get_description(const command_pkg& pkg) { return std::make_pair(command_type::COMPUTE, "COMPUTE"); }
 
-// While device profiling is disabled on hipSYCL anyway, we have to make sure that we don't include any OpenCL code
-#if !WORKAROUND(HIPSYCL, 0)
-	// TODO: SYCL should have a event::get_profiling_info call. As of ComputeCpp 0.8.0 this doesn't seem to be supported.
-	std::chrono::time_point<std::chrono::nanoseconds> get_profiling_info(cl_event e, cl_profiling_info param) {
-		cl_ulong value;
-		const auto result = clGetEventProfilingInfo(e, param, sizeof(cl_ulong), &value, nullptr);
-		assert(result == CL_SUCCESS);
-		return std::chrono::time_point<std::chrono::nanoseconds>(std::chrono::nanoseconds(value));
-	};
-#endif
-
 	bool compute_job::execute(const command_pkg& pkg, std::shared_ptr<logger> logger) {
 		const auto data = boost::get<compute_data>(pkg.data);
 		// A bit of a hack: We cannot be sure the main thread has reached the task definition yet, so we have to check it here
@@ -148,12 +137,11 @@ namespace detail {
 		const auto status = event.get_info<cl::sycl::info::event::command_execution_status>();
 		if(status == cl::sycl::info::event_command_status::complete) {
 #endif
-#if !WORKAROUND(HIPSYCL, 0)
 			if(queue.is_profiling_enabled()) {
-				const auto queued = get_profiling_info(event.get(), CL_PROFILING_COMMAND_QUEUED);
-				const auto submit = get_profiling_info(event.get(), CL_PROFILING_COMMAND_SUBMIT);
-				const auto start = get_profiling_info(event.get(), CL_PROFILING_COMMAND_START);
-				const auto end = get_profiling_info(event.get(), CL_PROFILING_COMMAND_END);
+				const auto queued = std::chrono::nanoseconds(0);
+				const auto submit = std::chrono::nanoseconds(0);
+				const auto start = std::chrono::nanoseconds(event.get_profiling_info<cl::sycl::info::event_profiling::command_start>());
+				const auto end = std::chrono::nanoseconds(event.get_profiling_info<cl::sycl::info::event_profiling::command_end>());
 
 				// FIXME: The timestamps logged here don't match the actual values we just queried. Can we fix that?
 				logger->trace(logger_map({{"event",
@@ -163,7 +151,6 @@ namespace detail {
 				logger->trace(logger_map(
 				    {{"event", fmt::format("Delta time start -> end: {}us", std::chrono::duration_cast<std::chrono::microseconds>(end - start).count())}}));
 			}
-#endif
 			return true;
 		}
 		return false;
